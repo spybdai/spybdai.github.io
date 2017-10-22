@@ -1,4 +1,7 @@
-
+---
+categories: [python-web]
+tags: [django, gunicorn]
+---
 
 Problem:
 	django + gunicorn
@@ -23,7 +26,7 @@ https://docs.djangoproject.com/en/1.10/ref/databases/#persistent-connections
 
 
 
-How django manage connections?
+## How does django manage connections?
 
 https://docs.djangoproject.com/en/1.10/ref/databases/#connection-management
 
@@ -52,16 +55,101 @@ Lets see the code for this.
 	3.	code for close(), checking CONN_MAX_AGE
 
 
-What does gunicorn do if launched with "-k gevent"?
+## What does gunicorn do if launched with "-k gevent"?
 
-You may need read source code of gunicorn for this question. But, for this scenario, one most import thing gunicorn does  is "patching codes" for asynchronic I/O operation purpose. 
+You may need read source code of gunicorn for this question. But, for this scenario, one most important work is that "threads are patched" by gunicorn for asynchronic I/O operation purpose. 
 
-Lets come to code directly. 
+Lets see the code. 
 
 	1.	select gevent worker class
 	2.	process of start work
 	3.	detail of patch_all
 
+The main master loop of gunicorn, which is invoked by `WSGIApplication.run` method.
+<pre>
+    def run(self):
+        "Main master loop."
+        self.start()
+        util._setproctitle("master [%s]" % self.proc_name)
+
+        try:
+            <b>self.manage_workers()</b>
+            while True:
+                self.maybe_promote_master()
+				...
+</pre>
+And, in calling to method `self.manage_workes`, the prefored childrens will do some prepare work for handling requests.
+```
+    def manage_workers(self):
+        """\
+        Maintain the number of workers by spawning or killing
+        as required.
+        """
+        if len(self.WORKERS.keys()) < self.num_workers:
+            *self.spawn_workers()*
+			...
+
+    def spawn_worker(self):
+        self.worker_age += 1
+        worker = self.worker_class(self.worker_age, self.pid, self.LISTENERS,
+                                   self.app, self.timeout / 2.0,
+                                   self.cfg, self.log)
+        self.cfg.pre_fork(self, worker)
+        pid = os.fork()
+        if pid != 0:
+            self.WORKERS[pid] = worker
+            return pid
+
+        # Process Child
+        worker_pid = os.getpid()
+        try:
+            util._setproctitle("worker [%s]" % self.proc_name)
+            self.log.info("Booting worker with pid: %s", worker_pid)
+            self.cfg.post_fork(self, worker)
+            *worker.init_process()*
+            sys.exit(0)
+			...
+```
+As we can see, the forked children processes will do several work, but most important here, they invoke method `init_process` of `GeventWorker`, since `-k gevent` is picked up. And `init_process` invokes `patch` to patch the codes.
+
+```
+        def init_process(self):
+            # monkey patch here
+            self.patch()
+			...
+
+    def patch(self):
+        from gevent import monkey
+        monkey.noisy = False
+
+        # if the new version is used make sure to patch subprocess
+        if gevent.version_info[0] == 0:
+            monkey.patch_all()
+        else:
+            monkey.patch_all(subprocess=True)		
+```
+And `patch_all` method patches codes related to `threads and threading`.
+```
+	...
+    if thread:
+        patch_thread(Event=Event)
+	...
+
+	...
+    patch_module('thread')
+    if threading:
+        threading = patch_module('threading')	
+	...
+	...
+    if _threading_local:
+        _threading_local = __import__('_threading_local')
+        from gevent.local import local
+        patch_item(_threading_local, 'local', local)
+	...
+```
+As we can see, `local` from `thread` and `_threading_local` are replaced by that from `gevent.local`.
+
+## Problem is, whats the difference between `local` from `thread` (or `_threading_local`) and from `gevent`?
 
 Then, how problem happen?
 
