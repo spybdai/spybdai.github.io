@@ -149,7 +149,7 @@ def stop(self):
 1. wrap the results in a transaction. How to understand the term "**transaction**" here?
 2. making the operation idempotent. This makes sense. The idempotent is defined like this: "In [computer science](https://en.wikipedia.org/wiki/Computer_science), the term **idempotent** is used more comprehensively to describe an operation that will produce the same results if executed once or multiple times.[[9\]](https://en.wikipedia.org/wiki/Idempotence#cite_note-IBM-9) This may have a different meaning depending on the context in which it is applied. **In the case of [methods](https://en.wikipedia.org/wiki/Method_(computer_science)) or [subroutine](https://en.wikipedia.org/wiki/Subroutine) calls with [side effects](https://en.wikipedia.org/wiki/Side_effect_(computer_science)), for instance, it means that the modified state remains the same after the first call**."
 
-###X. Dev/Prod Parity 
+### X. Dev/Prod Parity
 
 **Keep development, staging and production as similar as possible**
 
