@@ -157,7 +157,23 @@ def stop(self):
 
 T: **A twelve-factor app never concerns itself with routing or storage of its output stream.** It should not attempt to write to or manage logfiles….In staging or production deploys, each process’ stream will be captured by the execution environment, collated together with all other streams from the app, and routed to one or more final destinations for viewing and long-term archival….**The event stream for an app can be routed to a file**, or watched via realtime tail in a terminal. 
 
-C: "It should not attempt to write to or manage log file…" Here, it makes sense to statement "it should not manage logfile", but it's not precisely to say "It should not attempt to **write to**". Since 12-factor indeed could route it's event stream to stdout, a log file, or backend service (for example, pass the log to a webservice). But yes, a most common scenario is, app routes log to legfiles, and an agent of log-anaylise system collects the log from the log file to the system for further handle.
+C: "It should not attempt to write to or manage log file…" Here, it makes sense to statement "it should not manage logfile", but it's not precisely to say "It should not attempt to **write to**". Since 12-factor indeed could route it's event stream to stdout, a log file, or backend service (for example, pass the log to a webservice). But yes, a most common scenario is, app routes log to log files, and an agent of log-anaylise system collects the log from the log file to the system for further handle.
+
+Comments from [Logs Are Streams, Not Files](https://adam.herokuapp.com/past/2011/4/1/logs_are_streams_not_files/):
+
+C1: A program using `stdout` for logging can use syslog without needing to implement any syslog awareness into the program, by piping to the standard `logger` command available on all modern unixes. A program which uses `stdout` is equipped to **log in a variety of ways without adding any weight to its codebase or configuration format**.
+
+```Shell
+# piping to syslog
+$ mydaemon | logger
+
+# piping to syslog as well as to log file
+$ mydaemon | tee /var/log/mydaemon.log | logger
+```
+
+C2: There are other distributed logging protocols such as Splunk and Scribe, HeroKu log system logplex, syslog-as-a-service product like Loggy and Papertrail. Programs that log to `stdout` can be **adapted to work with a new protocol without needing to modify the program.** Simply pipe the program’s output to a receiving daemon just as you would with the `logger` program for syslog. Treating your logs as streams is a form of [future-proofing](http://en.wikipedia.org/wiki/Future_proof) for your application. **The flexibility of usinge new log protocols is reserved**.
+
+C3: Logs are a stream, and it behooves everyone to treat them as such. Your programs should log to `stdout`and/or `stderr` and omit any attempt to handle log paths, log rotation, or sending logs over the syslog protocol. **Directing where the program’s log stream goes can be left up to the runtime container: a local terminal or IDE (in development environments), an Upstart / Systemd launch script (in traditional hosting environments), or a system like Logplex/Heroku (in a platform environment)**.
 
 ### XII. Admin Processes
 
