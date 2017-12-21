@@ -81,9 +81,9 @@ and, the django job itself maybe like this:
 ```python
 # job_name.py
 class Command(BaseCommand):
-	def handle(self, *args, **kwargs):
-		while True:
-			do_something
+    def handle(self, *args, **kwargs):
+        while True:
+            do_something
 ```
 
 And, with the above discussion, we know, a better practice is that:
